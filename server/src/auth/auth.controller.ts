@@ -5,6 +5,7 @@ import argon from "argon2";
 import { LoginUserModel, RegisterUserModel } from "./auth.model";
 import { signUserTokens, verifyToken } from "./auth.utils";
 import { NODE_ENV } from "../config/env.config";
+import { cookieConfig } from "../config/cookie.config";
 
 export const registerUserHandler: RequestHandler = async (req, res, next) => {
   try {
@@ -35,11 +36,7 @@ export const registerUserHandler: RequestHandler = async (req, res, next) => {
       where: { id: restOfNewUser.id },
       data: { refreshToken },
     });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: NODE_ENV !== "development",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days expiration in milliseconds
-    });
+    res.cookie("refreshToken", refreshToken, cookieConfig);
     res.status(201).json({
       user: restOfNewUser,
       accessToken,
@@ -77,11 +74,7 @@ export const loginUserHandler: RequestHandler = async (req, res, next) => {
       where: { id: restOfUser.id },
       data: { refreshToken, lastLoginAt: new Date().toISOString() },
     });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: NODE_ENV !== "development",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 Days expiration in milliseconds
-    });
+    res.cookie("refreshToken", refreshToken, cookieConfig);
     res.status(201).json({
       user: restOfUser,
       accessToken,
