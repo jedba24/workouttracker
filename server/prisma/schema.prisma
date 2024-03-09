@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum FileType {
+  IMAGE
+}
+
+enum ExerciseType {
+  CARDIO
+  WEIGHT
+}
+
+model File {
+  id           String    @id @default(uuid())
+  originalName String    @db.VarChar(100)
+  key          String    @unique @db.VarChar(36)
+  bucket       String    @db.VarChar(50)
+  size         Int
+  mime         String
+  fileType     FileType  @default(IMAGE)
+  uploadedAt   DateTime  @default(now())
+  modifiedAt   DateTime  @default(now())
+  uploader     User      @relation(name: "file-uploader", fields: [userId], references: [id])
+  User         User[]    @relation(name: "avatar-file")
+  userId       String
+  Progess      Progess[]
+
+  @@unique([key, bucket])
+}
+
+model User {
+  id           String        @id @default(uuid())
+  firstName    String        @db.VarChar(20)
+  lastName     String        @db.VarChar(20)
+  email        String        @unique @db.VarChar(50)
+  passwordHash String        @db.VarChar(255)
+  role         Role          @default(USER)
+  registeredAt DateTime      @default(now())
+  lastLoginAt  DateTime?
+  refreshToken String?       @unique @db.VarChar(500)
+  height       Int?
+  weight       Int?
+  bio          String?       @db.VarChar(200)
+  avatarFile   File?         @relation(name: "avatar-file", fields: [avatarFileId], references: [id])
+  avatarFileId String?
+  File         File[]        @relation(name: "file-uploader")
+  Progess      Progess[]
+  Exercise     Exercise[]
+  Routine      Routine[]
+  UserRoutine  UserRoutine[]
+  UserWorkout  UserWorkout[]
+}
+
+model Progess {
+  id      String   @id @default(uuid())
+  user    User     @relation(fields: [userId], references: [id])
+  userId  String
+  image   File     @relation(fields: [imageId], references: [id])
+  imageId String
+  weight  Int?
+  date    DateTime @default(now())
+  notes   String?  @db.VarChar(200)
+}
+
+model Muscle {
+  id       String     @id @default(uuid())
+  name     String     @unique @db.VarChar(100)
+  Exercise Exercise[]
+}
+
+model Equipment {
+  id       String     @id @default(uuid())
+  name     String     @unique @db.VarChar(100)
+  Exercise Exercise[]
+}
+
+model Exercise {
+  id              String            @id @default(uuid())
+  title           String            @db.VarChar(100)
+  steps           String?           @db.VarChar(250)
+  muscle          Muscle            @relation(fields: [muscleId], references: [id])
+  muscleId        String
+  equipment       Equipment         @relation(fields: [equipmentId], references: [id])
+  equipmentId     String
+  exerciseType    ExerciseType      @default(WEIGHT)
+  isPublic        Boolean
+  author          User              @relation(fields: [authorId], references: [id])
+  authorId        String
+  RoutineExercise RoutineExercise[]
+  UserTarget      UserTarget[]
+  UserWorkoutSet  UserWorkoutSet[]
+
+  @@unique([title, authorId])
+}
+
+model Routine {
+  id             String           @id @default(uuid())
+  title          String           @db.VarChar(100)
+  description    String?          @db.VarChar(250)
+  isPublic       Boolean
+  author         User             @relation(fields: [authorId], references: [id])
+  authorId       String
+  RoutineSession RoutineSession[]
+  UserRoutine    UserRoutine[]
+}
+
+model RoutineSession {
+  id              String            @id @default(uuid())
+  routine         Routine           @relation(fields: [routineId], references: [id])
+  routineId       String
+  dayNumber       Int
+  RoutineExercise RoutineExercise[]
+}
+
+model RoutineExercise {
+  routineSession   RoutineSession @relation(fields: [routineSessionId], references: [id])
+  routineSessionId String
+  exercise         Exercise       @relation(fields: [exerciseId], references: [id])
+  exerciseId       String
+
+  @@id([routineSessionId, exerciseId])
+}
+
+model UserRoutine {
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  routine   Routine  @relation(fields: [routineId], references: [id])
+  routineId String
+  startDate DateTime @default(now())
+
+  @@id([routineId, userId])
+}
+
+model UserTarget {
+  id             String   @id @default(uuid())
+  exercise       Exercise @relation(fields: [exerciseId], references: [id])
+  exerciseId     String
+  targetReps     Int?
+  targetSets     Int?
+  targetDistance Float?
+  targetDuration Int?
+}
+
+model UserWorkout {
+  id             String           @id @default(uuid())
+  user           User             @relation(fields: [userId], references: [id])
+  userId         String
+  date           DateTime         @default(now())
+  notes          String?          @db.VarChar(200)
+  isCompleted    Boolean          @default(false)
+  UserWorkoutSet UserWorkoutSet[]
+}
+
+model UserWorkoutSet {
+  id            String      @id @default(uuid())
+  userWorkout   UserWorkout @relation(fields: [userWorkoutId], references: [id])
+  userWorkoutId String
+  exercise      Exercise    @relation(fields: [exerciseId], references: [id])
+  exerciseId    String
+  reps          Int?
+  weight        Int?
+  duration      Int?
+  distance      Float?
+  notes         String?     @db.VarChar(200)
+}
